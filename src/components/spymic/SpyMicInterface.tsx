@@ -201,36 +201,36 @@ export default function SpyMicInterface() {
         <div className="w-full max-w-md mb-8 space-y-4">
           <h2 className="text-3xl font-bold text-center text-primary tracking-tight">How to Use SpyMic</h2>
           <div className="relative"> 
+            <style jsx>{`
+              @keyframes slide-in-right {
+                0% {
+                  opacity: 0;
+                  transform: translateX(100%);
+                }
+                100% {
+                  opacity: 1;
+                  transform: translateX(0);
+                }
+              }
+              .animate-slide-in-right {
+                animation: slide-in-right 0.5s ease-out forwards;
+              }
+              @keyframes pulse-icon {
+                0%, 100% {
+                  transform: scale(1);
+                }
+                50% {
+                  transform: scale(1.1);
+                }
+              }
+              .animate-pulse-icon {
+                animation: pulse-icon 1.5s infinite ease-in-out;
+              }
+            `}</style>
             <Card
               key={`${instruction.id}-${animationKey}`} 
               className="shadow-lg border-border hover:shadow-xl animate-slide-in-right"
             >
-              <style jsx>{`
-                @keyframes slide-in-right {
-                  0% {
-                    opacity: 0;
-                    transform: translateX(100%);
-                  }
-                  100% {
-                    opacity: 1;
-                    transform: translateX(0);
-                  }
-                }
-                .animate-slide-in-right {
-                  animation: slide-in-right 0.5s ease-out forwards;
-                }
-                @keyframes pulse-icon {
-                  0%, 100% {
-                    transform: scale(1);
-                  }
-                  50% {
-                    transform: scale(1.1);
-                  }
-                }
-                .animate-pulse-icon {
-                  animation: pulse-icon 1.5s infinite ease-in-out;
-                }
-              `}</style>
               <CardHeader>
                 <CardTitle className="flex items-center text-xl">
                   <instruction.icon className="w-7 h-7 mr-3 text-primary animate-pulse-icon" />
