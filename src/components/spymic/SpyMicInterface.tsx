@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import AppLogo from '@/components/icons/AppLogo';
-import { Bluetooth, Mic, MicOff, Play, Pause, Volume2, VolumeX, Power, AlertTriangle, ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { Bluetooth, Mic, MicOff, Play, Pause, Volume2, VolumeX, Power, AlertTriangle, ShieldCheck, SlidersHorizontal, ArrowRight, SkipForward } from 'lucide-react';
 
 type MicAccessState = 'idle' | 'requesting' | 'granted' | 'denied';
 
@@ -27,29 +27,31 @@ const instructionsList: Instruction[] = [
   },
   {
     id: 2,
+    title: "Grant Permissions",
+    description: "If prompted, allow microphone access for the app to work correctly.",
+    icon: ShieldCheck,
+  },
+  {
+    id: 3,
     title: "Activate SpyMic",
     description: "Tap 'Activate SpyMic' to enable your phone's microphone.",
     icon: Power,
   },
   {
-    id: 3,
+    id: 4,
     title: "Adjust & Listen",
     description: "Use 'Play/Pause' for audio control and the slider to set volume.",
     icon: SlidersHorizontal,
-  },
-  {
-    id: 4,
-    title: "Grant Permissions",
-    description: "If prompted, allow microphone access for the app to work correctly.",
-    icon: ShieldCheck,
   },
 ];
 
 export default function SpyMicInterface() {
   const [micAccessState, setMicAccessState] = useState<MicAccessState>('idle');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [volume, setVolume] = useState<number>(0.5); // Volume 0 to 1
-  const [visibleInstructions, setVisibleInstructions] = useState<number[]>([]);
+  const [volume, setVolume] = useState<number>(0.5);
+  const [currentInstructionStep, setCurrentInstructionStep] = useState<number>(0);
+  const [instructionsCompleted, setInstructionsCompleted] = useState<boolean>(false);
+  const [animationKey, setAnimationKey] = useState<number>(0); // For re-triggering animation
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -57,15 +59,6 @@ export default function SpyMicInterface() {
   const gainNodeRef = useRef<GainNode | null>(null);
 
   const { toast } = useToast();
-
-  useEffect(() => {
-    const timers = instructionsList.map((instruction, index) =>
-      setTimeout(() => {
-        setVisibleInstructions(prev => [...prev, instruction.id]);
-      }, index * 200) // Staggered delay for slide-in effect
-    );
-    return () => timers.forEach(clearTimeout); // Cleanup timers on unmount
-  }, []);
 
   const cleanupAudio = useCallback(() => {
     if (mediaStreamRef.current) {
@@ -88,8 +81,6 @@ export default function SpyMicInterface() {
   }, []);
 
   const initializeAudio = useCallback(async () => {
-    // Note: This function is defined with useCallback but its dependencies might need review if its behavior changes based on external state/props not listed.
-    // For now, assuming it's stable or dependencies are correctly managed by its call sites.
     if (micAccessState !== 'requesting') {
       console.log("initializeAudio called but micAccessState is not 'requesting'. Current state:", micAccessState);
       return;
@@ -119,7 +110,7 @@ export default function SpyMicInterface() {
       
       gain.gain.setValueAtTime(volume, context.currentTime);
       setMicAccessState('granted');
-      setIsPlaying(true); // Auto-play on connect
+      setIsPlaying(true);
       toast({ title: "SpyMic Activated", description: "Microphone connected and audio is live." });
 
     } catch (error) {
@@ -132,13 +123,11 @@ export default function SpyMicInterface() {
       });
       cleanupAudio();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [micAccessState, volume, toast, cleanupAudio]); // Added dependencies based on usage
+  }, [micAccessState, volume, toast, cleanupAudio]); // Added micAccessState to dependencies
 
   const handleActivateToggle = () => {
     if (micAccessState === 'idle' || micAccessState === 'denied') {
       setMicAccessState('requesting');
-      // initializeAudio will be called by useEffect when micAccessState becomes 'requesting'
     } else if (micAccessState === 'granted') {
       console.log("Deactivating SpyMic...");
       cleanupAudio();
@@ -154,9 +143,7 @@ export default function SpyMicInterface() {
     }
   }, [micAccessState, initializeAudio]);
 
-
   useEffect(() => {
-    // Cleanup on unmount
     return () => {
       console.log("SpyMicInterface unmounting. Cleaning up audio resources...");
       cleanupAudio();
@@ -166,12 +153,10 @@ export default function SpyMicInterface() {
   useEffect(() => {
     if (gainNodeRef.current && audioContextRef.current) {
       const newGainValue = isPlaying ? volume : 0;
-      // Use exponentialRampToValueAtTime for smoother volume changes if supported and desired,
-      // but setValueAtTime is fine for immediate changes.
       gainNodeRef.current.gain.setValueAtTime(newGainValue, audioContextRef.current.currentTime);
       console.log(`Gain updated: isPlaying=${isPlaying}, volume=${volume}, gainValue=${newGainValue}`);
     }
-  }, [isPlaying, volume, micAccessState]); // Removed micAccessState if it's not directly influencing gain logic beyond play/pause
+  }, [isPlaying, volume]);
 
   const handlePlayPauseToggle = () => {
     if (micAccessState === 'granted') {
@@ -192,34 +177,85 @@ export default function SpyMicInterface() {
     return "Inactive";
   };
 
+  const handleNextInstruction = () => {
+    setAnimationKey(prev => prev + 1); // Trigger re-animation
+    if (currentInstructionStep < instructionsList.length - 1) {
+      setCurrentInstructionStep(prev => prev + 1);
+    } else {
+      setInstructionsCompleted(true);
+    }
+  };
+
+  const handleSkipInstructions = () => {
+    setInstructionsCompleted(true);
+  };
+
   const isControlDisabled = micAccessState !== 'granted';
+
+  if (!instructionsCompleted) {
+    const instruction = instructionsList[currentInstructionStep];
+    const isLastStep = currentInstructionStep === instructionsList.length - 1;
+
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background text-foreground overflow-hidden">
+        <div className="w-full max-w-md mb-8 space-y-4">
+          <h2 className="text-3xl font-bold text-center text-primary tracking-tight">How to Use SpyMic</h2>
+          <div className="relative"> {/* Container for animation */}
+            <Card
+              key={`${instruction.id}-${animationKey}`} // Unique key for re-mount and animation
+              className="shadow-lg border-border hover:shadow-xl animate-slide-in-right"
+            >
+              <style jsx>{`
+                @keyframes slide-in-right {
+                  0% {
+                    opacity: 0;
+                    transform: translateX(100%);
+                  }
+                  100% {
+                    opacity: 1;
+                    transform: translateX(0);
+                  }
+                }
+                .animate-slide-in-right {
+                  animation: slide-in-right 0.5s ease-out forwards;
+                }
+              `}</style>
+              <CardHeader>
+                <CardTitle className="flex items-center text-xl">
+                  <instruction.icon className="w-7 h-7 mr-3 text-primary" />
+                  {instruction.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground text-sm">{instruction.description}</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+        <div className="w-full max-w-md flex space-x-4">
+          <Button onClick={handleSkipInstructions} variant="outline" className="w-1/3">
+            <SkipForward className="mr-2 h-4 w-4" /> Skip
+          </Button>
+          <Button onClick={handleNextInstruction} className="w-2/3">
+            {isLastStep ? 'Get Started' : 'Next'} <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+        <div className="w-full max-w-md mt-4 flex justify-center space-x-2">
+            {instructionsList.map((_, index) => (
+              <div
+                key={`dot-${index}`}
+                className={`h-2 w-2 rounded-full ${
+                  index === currentInstructionStep ? 'bg-primary' : 'bg-muted'
+                }`}
+              />
+            ))}
+          </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background text-foreground">
-      <div className="w-full max-w-md mb-8 space-y-4">
-        <h2 className="text-3xl font-bold text-center text-primary tracking-tight">How to Use SpyMic</h2>
-        {instructionsList.map((instruction) => (
-          <Card
-            key={instruction.id}
-            className={`transition-all duration-500 ease-out transform ${
-              visibleInstructions.includes(instruction.id)
-                ? 'opacity-100 translate-y-0'
-                : 'opacity-0 translate-y-10'
-            } shadow-lg border-border hover:shadow-xl`}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center text-xl">
-                <instruction.icon className="w-7 h-7 mr-3 text-primary" />
-                {instruction.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm">{instruction.description}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
       <Card className="w-full max-w-md shadow-2xl" style={{boxShadow: '0 10px 25px -5px hsl(var(--primary) / 0.3), 0 8px 10px -6px hsl(var(--primary) / 0.2)'}}>
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
@@ -291,6 +327,5 @@ export default function SpyMicInterface() {
     </div>
   );
 }
-
 
     
