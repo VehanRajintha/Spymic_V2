@@ -123,7 +123,7 @@ export default function SpyMicInterface() {
       });
       cleanupAudio();
     }
-  }, [micAccessState, volume, toast, cleanupAudio]); // Added micAccessState to dependencies
+  }, [micAccessState, volume, toast, cleanupAudio]); 
 
   const handleActivateToggle = () => {
     if (micAccessState === 'idle' || micAccessState === 'denied') {
@@ -178,7 +178,7 @@ export default function SpyMicInterface() {
   };
 
   const handleNextInstruction = () => {
-    setAnimationKey(prev => prev + 1); // Trigger re-animation
+    setAnimationKey(prev => prev + 1); 
     if (currentInstructionStep < instructionsList.length - 1) {
       setCurrentInstructionStep(prev => prev + 1);
     } else {
@@ -200,9 +200,9 @@ export default function SpyMicInterface() {
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background text-foreground overflow-hidden">
         <div className="w-full max-w-md mb-8 space-y-4">
           <h2 className="text-3xl font-bold text-center text-primary tracking-tight">How to Use SpyMic</h2>
-          <div className="relative"> {/* Container for animation */}
+          <div className="relative"> 
             <Card
-              key={`${instruction.id}-${animationKey}`} // Unique key for re-mount and animation
+              key={`${instruction.id}-${animationKey}`} 
               className="shadow-lg border-border hover:shadow-xl animate-slide-in-right"
             >
               <style jsx>{`
@@ -219,10 +219,21 @@ export default function SpyMicInterface() {
                 .animate-slide-in-right {
                   animation: slide-in-right 0.5s ease-out forwards;
                 }
+                @keyframes pulse-icon {
+                  0%, 100% {
+                    transform: scale(1);
+                  }
+                  50% {
+                    transform: scale(1.1);
+                  }
+                }
+                .animate-pulse-icon {
+                  animation: pulse-icon 1.5s infinite ease-in-out;
+                }
               `}</style>
               <CardHeader>
                 <CardTitle className="flex items-center text-xl">
-                  <instruction.icon className="w-7 h-7 mr-3 text-primary" />
+                  <instruction.icon className="w-7 h-7 mr-3 text-primary animate-pulse-icon" />
                   {instruction.title}
                 </CardTitle>
               </CardHeader>
@@ -327,5 +338,3 @@ export default function SpyMicInterface() {
     </div>
   );
 }
-
-    
